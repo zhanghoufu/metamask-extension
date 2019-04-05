@@ -218,7 +218,11 @@ module.exports = class MetamaskController extends EventEmitter {
     this.messageManager = new MessageManager()
     this.personalMessageManager = new PersonalMessageManager()
     this.typedMessageManager = new TypedMessageManager({ networkController: this.networkController })
-    this.publicConfigStore = this.initPublicConfigStore()
+
+    // ensure isClientOpenAndUnlocked is updated when memState updates
+    this.on('update', (memState) => {
+      this.isClientOpenAndUnlocked = memState.isUnlocked && this._isClientOpen
+    })
 
     this.providerApprovalController = new ProviderApprovalController({
       closePopup: opts.closePopup,
@@ -226,7 +230,7 @@ module.exports = class MetamaskController extends EventEmitter {
       openPopup: opts.openPopup,
       platform: opts.platform,
       preferencesController: this.preferencesController,
-      publicConfigStore: this.publicConfigStore,
+      publicConfigStore: this.createPublicConfigStore(),
     })
 
     this.store.updateStructure({
@@ -305,16 +309,20 @@ module.exports = class MetamaskController extends EventEmitter {
    * Constructor helper: initialize a public config store.
    * This store is used to make some config info available to Dapps synchronously.
    */
-  initPublicConfigStore () {
+  createPublicConfigStore () {
     // get init state
     const publicConfigStore = new ObservableStore()
 
     // memStore -> transform -> publicConfigStore
-    this.on('update', (memState) => {
-      this.isClientOpenAndUnlocked = memState.isUnlocked && this._isClientOpen
+    const updatePublicConfigStore = (memState) => {
       const publicState = selectPublicState(memState)
       publicConfigStore.putState(publicState)
-    })
+    }
+
+    this.on('update', updatePublicConfigStore)
+    publicConfigStore.destroy = () => {
+      this.off('update', updatePublicConfigStore)
+    }
 
     function selectPublicState (memState) {
       const result = {
@@ -1401,11 +1409,14 @@ module.exports = class MetamaskController extends EventEmitter {
    * @param {*} outStream - The stream to provide public config over.
    */
   setupPublicConfig (outStream) {
-    const configStream = asStream(this.publicConfigStore)
+    const configStore = this.createPublicConfigStore()
+    const configStream = asStream(configStore)
+
     pump(
       configStream,
       outStream,
       (err) => {
+        configStore.destroy()
         configStream.destroy()
         if (err) log.error(err)
       }
