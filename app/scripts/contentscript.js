@@ -12,7 +12,6 @@ const {Transform: TransformStream} = require('stream')
 const inpageContent = fs.readFileSync(path.join(__dirname, '..', '..', 'dist', 'chrome', 'inpage.js')).toString()
 const inpageSuffix = '//# sourceURL=' + extension.extension.getURL('inpage.js') + '\n'
 const inpageBundle = inpageContent + inpageSuffix
-let isEnabled = false
 
 // Eventually this streaming injection could be replaced with:
 // https://developer.mozilla.org/en-US/docs/Mozilla/Tech/XPCOM/Language_Bindings/Components.utils.exportFunction
@@ -59,22 +58,10 @@ function setupStreams () {
   const pluginPort = extension.runtime.connect({ name: 'contentscript' })
   const pluginStream = new PortStream(pluginPort)
 
-  // Filter out selectedAddress until this origin is enabled
-  const approvalTransform = new TransformStream({
-    objectMode: true,
-    transform: (data, _, done) => {
-      if (typeof data === 'object' && data.name && data.name === 'publicConfig' && !isEnabled) {
-        data.data.selectedAddress = undefined
-      }
-      done(null, { ...data })
-    },
-  })
-
   // forward communication plugin->inpage
   pump(
     pageStream,
     pluginStream,
-    approvalTransform,
     pageStream,
     (err) => logStreamDisconnectWarning('MetaMask Contentscript Forwarding', err)
   )
@@ -150,11 +137,9 @@ function listenForProviderRequest () {
   extension.runtime.onMessage.addListener(({ action = '', isApproved, caching, isUnlocked, selectedAddress }) => {
     switch (action) {
       case 'approve-provider-request':
-        isEnabled = true
         window.postMessage({ type: 'ethereumprovider', selectedAddress }, '*')
         break
       case 'approve-legacy-provider-request':
-        isEnabled = true
         window.postMessage({ type: 'ethereumproviderlegacy', selectedAddress }, '*')
         break
       case 'reject-provider-request':
@@ -167,7 +152,6 @@ function listenForProviderRequest () {
         window.postMessage({ type: 'metamaskisunlocked', isUnlocked }, '*')
         break
       case 'metamask-set-locked':
-        isEnabled = false
         window.postMessage({ type: 'metamasksetlocked' }, '*')
         break
       case 'ethereum-ping-success':

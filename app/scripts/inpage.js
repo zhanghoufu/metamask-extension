@@ -55,9 +55,6 @@ onMessage('metamasksetlocked', () => { isEnabled = false })
 // set up a listener for privacy mode responses
 onMessage('ethereumproviderlegacy', ({ data: { selectedAddress } }) => {
   isEnabled = true
-  setTimeout(() => {
-    inpageProvider.publicConfigStore.updateState({ selectedAddress })
-  }, 0)
 }, true)
 
 // augment the provider with its enable method
@@ -71,9 +68,6 @@ inpageProvider.enable = function ({ force } = {}) {
         })
       } else {
         window.removeEventListener('message', providerHandle)
-        setTimeout(() => {
-          inpageProvider.publicConfigStore.updateState({ selectedAddress })
-        }, 0)
 
         // wait for the background to update with an account
         inpageProvider.sendAsync({ method: 'eth_accounts', params: [] }, (error, response) => {
