@@ -315,7 +315,7 @@ module.exports = class MetamaskController extends EventEmitter {
     // setup memStore subscription hooks
     this.on('update', updatePublicConfigStore)
     publicConfigStore.destroy = () => {
-      this.off('update', updatePublicConfigStore)
+      this.removeEventListener('update', updatePublicConfigStore)
     }
 
     function updatePublicConfigStore (memState) {
@@ -469,9 +469,12 @@ module.exports = class MetamaskController extends EventEmitter {
       signTypedMessage: nodeify(this.signTypedMessage, this),
       cancelTypedMessage: this.cancelTypedMessage.bind(this),
 
+      // provider approval
       approveProviderRequest: providerApprovalController.approveProviderRequest.bind(providerApprovalController),
-      clearApprovedOrigins: providerApprovalController.clearApprovedOrigins.bind(providerApprovalController),
+      approveProviderRequestByOrigin: providerApprovalController.approveProviderRequestByOrigin.bind(providerApprovalController),
       rejectProviderRequest: providerApprovalController.rejectProviderRequest.bind(providerApprovalController),
+      rejectProviderRequestByOrigin: providerApprovalController.rejectProviderRequestByOrigin.bind(providerApprovalController),
+      clearApprovedOrigins: providerApprovalController.clearApprovedOrigins.bind(providerApprovalController),
     }
   }
 
@@ -1382,6 +1385,8 @@ module.exports = class MetamaskController extends EventEmitter {
     engine.push(subscriptionManager.middleware)
     // watch asset
     engine.push(this.preferencesController.requestWatchAsset.bind(this.preferencesController))
+    // requestAccounts
+    engine.push(this.providerApprovalController.createMiddleware({ origin }))
     // forward to metamask primary provider
     engine.push(providerAsMiddleware(provider))
 

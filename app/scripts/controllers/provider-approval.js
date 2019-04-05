@@ -1,9 +1,11 @@
 const ObservableStore = require('obs-store')
+const SafeEventEmitter = require('safe-event-emitter')
+const createAsyncMiddleware = require('json-rpc-engine/src/createAsyncMiddleware')
 
 /**
  * A controller that services user-approved requests for a full Ethereum provider API
  */
-class ProviderApprovalController {
+class ProviderApprovalController extends SafeEventEmitter {
   /**
    * Determines if caching is enabled
    */
@@ -15,6 +17,7 @@ class ProviderApprovalController {
    * @param {Object} [config] - Options to configure controller
    */
   constructor ({ closePopup, keyringController, openPopup, platform, preferencesController } = {}) {
+    super()
     this.approvedOrigins = {}
     this.closePopup = closePopup
     this.keyringController = keyringController
@@ -45,6 +48,23 @@ class ProviderApprovalController {
         }
       })
     }
+  }
+
+  createMiddleware ({ origin }) {
+    return createAsyncMiddleware(async (req, res, next) => {
+      // only handle requestAccounts
+      if (req.method !== 'eth_requestAccounts') return next()
+      // register the provider request
+      // TODO: siteTitle, siteImage, tabId?
+      this._handleProviderRequest(origin, origin, null, false, null)
+      // wait for resolution of request
+      const approved = await new Promise(resolve => this.once(`resolvedRequest:${origin}`, ({ approved }) => resolve(approved)))
+      if (approved) {
+        res.result = [this.preferencesController.getSelectedAddress()]
+      } else {
+        throw new Error('User denied account authorization')
+      }
+    })
   }
 
   /**
@@ -116,6 +136,15 @@ class ProviderApprovalController {
     this.approvedOrigins[origin] = true
   }
 
+  approveProviderRequestByOrigin (origin) {
+    this.closePopup && this.closePopup()
+    const requests = this.store.getState().providerRequests
+    const providerRequests = requests.filter(request => request.origin !== origin)
+    this.store.updateState({ providerRequests })
+    this.approvedOrigins[origin] = true
+    this.emit(`resolvedRequest:${origin}`, { approved: true })
+  }
+
   /**
    * Called when a tab rejects access to a full Ethereum provider API
    *
@@ -129,6 +158,17 @@ class ProviderApprovalController {
     const providerRequests = requests.filter(request => request.tabID !== tabID)
     this.store.updateState({ providerRequests })
     delete this.approvedOrigins[origin]
+  }
+
+
+  rejectProviderRequestByOrigin (origin) {
+    this.closePopup && this.closePopup()
+    const requests = this.store.getState().providerRequests
+    const providerRequests = requests.filter(request => request.origin !== origin)
+    this.store.updateState({ providerRequests })
+    delete this.approvedOrigins[origin]
+    this.emit(`resolvedRequest:${origin}`, { approved: false })
+
   }
 
   /**

@@ -7,7 +7,6 @@ const setupDappAutoReload = require('./lib/auto-reload.js')
 const MetamaskInpageProvider = require('metamask-inpage-provider')
 const createStandardProvider = require('./createStandardProvider').default
 
-let isEnabled = false
 let warned = false
 let providerHandle
 let isApprovedHandle
@@ -49,39 +48,16 @@ const inpageProvider = new MetamaskInpageProvider(metamaskStream)
 // set a high max listener count to avoid unnecesary warnings
 inpageProvider.setMaxListeners(100)
 
-// set up a listener for when MetaMask is locked
-onMessage('metamasksetlocked', () => { isEnabled = false })
-
-// set up a listener for privacy mode responses
-onMessage('ethereumproviderlegacy', ({ data: { selectedAddress } }) => {
-  isEnabled = true
-}, true)
-
 // augment the provider with its enable method
 inpageProvider.enable = function ({ force } = {}) {
   return new Promise((resolve, reject) => {
-    providerHandle = ({ data: { error, selectedAddress } }) => {
-      if (typeof error !== 'undefined') {
-        reject({
-          message: error,
-          code: 4001,
-        })
+    inpageProvider.sendAsync({ method: 'eth_requestAccounts', params: [force] }, (error, response) => {
+      if (error) {
+        reject(error)
       } else {
-        window.removeEventListener('message', providerHandle)
-
-        // wait for the background to update with an account
-        inpageProvider.sendAsync({ method: 'eth_accounts', params: [] }, (error, response) => {
-          if (error) {
-            reject(error)
-          } else {
-            isEnabled = true
-            resolve(response.result)
-          }
-        })
+        resolve(response.result)
       }
-    }
-    onMessage('ethereumprovider', providerHandle, true)
-    window.postMessage({ type: 'ETHEREUM_ENABLE_PROVIDER', force }, '*')
+    })
   })
 }
 
@@ -97,7 +73,7 @@ inpageProvider._metamask = new Proxy({
    * @returns {boolean} - true if this domain is currently enabled
    */
   isEnabled: function () {
-    return isEnabled
+    return inpageProvider.publicConfigStore.getState().isEnabled
   },
 
   /**
@@ -152,19 +128,6 @@ const proxiedInpageProvider = new Proxy(inpageProvider, {
 })
 
 window.ethereum = createStandardProvider(proxiedInpageProvider)
-
-// detect eth_requestAccounts and pipe to enable for now
-function detectAccountRequest (method) {
-  const originalMethod = inpageProvider[method]
-  inpageProvider[method] = function ({ method }) {
-    if (method === 'eth_requestAccounts') {
-      return window.ethereum.enable()
-    }
-    return originalMethod.apply(this, arguments)
-  }
-}
-detectAccountRequest('send')
-detectAccountRequest('sendAsync')
 
 //
 // setup web3

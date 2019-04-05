@@ -59,8 +59,6 @@ class StandardProvider {
    * @returns {Promise<*>} Promise resolving to the result if successful
    */
   send (method, params = []) {
-    if (method === 'eth_requestAccounts') return this._provider.enable()
-
     return new Promise((resolve, reject) => {
       try {
         this._provider.sendAsync({ method, params, beta: true }, (error, response) => {

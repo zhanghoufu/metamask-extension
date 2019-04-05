@@ -344,7 +344,9 @@ var actions = {
   createSpeedUpTransaction,
 
   approveProviderRequest,
+  approveProviderRequestByOrigin,
   rejectProviderRequest,
+  rejectProviderRequestByOrigin,
   clearApprovedOrigins,
 
   setFirstTimeFlowType,
@@ -2689,6 +2691,18 @@ function approveProviderRequest (tabID) {
 function rejectProviderRequest (tabID) {
   return (dispatch) => {
     background.rejectProviderRequest(tabID)
+  }
+}
+
+function approveProviderRequestByOrigin (origin) {
+  return (dispatch) => {
+    background.approveProviderRequestByOrigin(origin)
+  }
+}
+
+function rejectProviderRequestByOrigin (origin) {
+  return (dispatch) => {
+    background.rejectProviderRequestByOrigin(origin)
   }
 }
 
