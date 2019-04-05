@@ -4,18 +4,10 @@ class StandardProvider {
 
   constructor (provider) {
     this._provider = provider
-    this._onMessage('ethereumpingerror', this._onClose.bind(this))
-    this._onMessage('ethereumpingsuccess', this._onConnect.bind(this))
-    window.addEventListener('load', () => {
-      this._subscribe()
-      this._ping()
-    })
-  }
-
-  _onMessage (type, handler) {
-    window.addEventListener('message', function ({ data }) {
-      if (!data || data.type !== type) return
-      handler.apply(this, arguments)
+    this._subscribe()
+    // indicate that we've connected, mostly just for standard compliance
+    setTimeout(() => {
+      this._onConnect()
     })
   }
 
@@ -32,15 +24,6 @@ class StandardProvider {
   _onConnect () {
     !this._isConnected && this._provider.emit('connect')
     this._isConnected = true
-  }
-
-  async _ping () {
-    try {
-      await this.send('net_version')
-      window.postMessage({ type: 'ethereumpingsuccess' }, '*')
-    } catch (error) {
-      window.postMessage({ type: 'ethereumpingerror' }, '*')
-    }
   }
 
   _subscribe () {
