@@ -323,13 +323,14 @@ module.exports = class MetamaskController extends EventEmitter {
       publicConfigStore.putState(publicState)
     }
 
-    function selectPublicState (memState) {
+    function selectPublicState ({ isUnlocked, selectedAddress, network }) {
       const isEnabled = checkIsEnabled()
-      const isReady = memState.isUnlocked && isEnabled
+      const isReady = isUnlocked && isEnabled
       const result = {
+        isUnlocked,
         isEnabled,
-        selectedAddress: isReady ? memState.selectedAddress : undefined,
-        networkVersion: memState.network,
+        selectedAddress: isReady ? selectedAddress : undefined,
+        networkVersion: network,
       }
       return result
     }

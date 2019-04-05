@@ -16,22 +16,6 @@ restoreContextAfterImports()
 
 log.setDefaultLevel(process.env.METAMASK_DEBUG ? 'debug' : 'warn')
 
-/**
- * Adds a postMessage listener for a specific message type
- *
- * @param {string} messageType - postMessage type to listen for
- * @param {Function} handler - event handler
- * @param {boolean} remove - removes this handler after being triggered
- */
-function onMessage (messageType, callback, remove) {
-  const handler = function ({ data }) {
-    if (!data || data.type !== messageType) { return }
-    remove && window.removeEventListener('message', handler)
-    callback.apply(window, arguments)
-  }
-  window.addEventListener('message', handler)
-}
-
 //
 // setup plugin communication
 //
@@ -81,18 +65,8 @@ inpageProvider._metamask = new Proxy({
    *
    * @returns {Promise<boolean>} - Promise resolving to true if this domain has been previously approved
    */
-  isApproved: function () {
-    return new Promise((resolve) => {
-      isApprovedHandle = ({ data: { caching, isApproved } }) => {
-        if (caching) {
-          resolve(!!isApproved)
-        } else {
-          resolve(false)
-        }
-      }
-      onMessage('ethereumisapproved', isApprovedHandle, true)
-      window.postMessage({ type: 'ETHEREUM_IS_APPROVED' }, '*')
-    })
+  isApproved: async function () {
+    return inpageProvider.publicConfigStore.getState().isEnabled
   },
 
   /**
@@ -100,14 +74,8 @@ inpageProvider._metamask = new Proxy({
    *
    * @returns {Promise<boolean>} - Promise resolving to true if MetaMask is currently unlocked
    */
-  isUnlocked: function () {
-    return new Promise((resolve) => {
-      isUnlockedHandle = ({ data: { isUnlocked } }) => {
-        resolve(!!isUnlocked)
-      }
-      onMessage('metamaskisunlocked', isUnlockedHandle, true)
-      window.postMessage({ type: 'METAMASK_IS_UNLOCKED' }, '*')
-    })
+  isUnlocked: async function () {
+    return inpageProvider.publicConfigStore.getState().isUnlocked
   },
 }, {
   get: function (obj, prop) {
