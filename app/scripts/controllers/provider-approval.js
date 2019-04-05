@@ -14,14 +14,13 @@ class ProviderApprovalController {
    *
    * @param {Object} [config] - Options to configure controller
    */
-  constructor ({ closePopup, keyringController, openPopup, platform, preferencesController, publicConfigStore } = {}) {
+  constructor ({ closePopup, keyringController, openPopup, platform, preferencesController } = {}) {
     this.approvedOrigins = {}
     this.closePopup = closePopup
     this.keyringController = keyringController
     this.openPopup = openPopup
     this.platform = platform
     this.preferencesController = preferencesController
-    this.publicConfigStore = publicConfigStore
     this.store = new ObservableStore({
       providerRequests: [],
     })
@@ -94,9 +93,8 @@ class ProviderApprovalController {
     if (!privacyMode) {
       this.platform && this.platform.sendMessage({
         action: 'approve-legacy-provider-request',
-        selectedAddress: this.publicConfigStore.getState().selectedAddress,
+        selectedAddress: this.preferencesController.getSelectedAddress(),
       }, { id: tabID })
-      this.publicConfigStore.emit('update', this.publicConfigStore.getState())
     }
   }
 
@@ -111,9 +109,8 @@ class ProviderApprovalController {
     const origin = requests.find(request => request.tabID === tabID).origin
     this.platform && this.platform.sendMessage({
       action: 'approve-provider-request',
-      selectedAddress: this.publicConfigStore.getState().selectedAddress,
+      selectedAddress: this.preferencesController.getSelectedAddress(),
     }, { id: tabID })
-    this.publicConfigStore.emit('update', this.publicConfigStore.getState())
     const providerRequests = requests.filter(request => request.tabID !== tabID)
     this.store.updateState({ providerRequests })
     this.approvedOrigins[origin] = true

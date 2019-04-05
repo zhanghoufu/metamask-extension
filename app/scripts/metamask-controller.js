@@ -230,7 +230,6 @@ module.exports = class MetamaskController extends EventEmitter {
       openPopup: opts.openPopup,
       platform: opts.platform,
       preferencesController: this.preferencesController,
-      publicConfigStore: this.createPublicConfigStore(),
     })
 
     this.store.updateStructure({
@@ -309,7 +308,7 @@ module.exports = class MetamaskController extends EventEmitter {
    * Constructor helper: initialize a public config store.
    * This store is used to make some config info available to Dapps synchronously.
    */
-  createPublicConfigStore () {
+  createPublicConfigStore ({ checkIsEnabled }) {
     // subset of state for metamask inpage provider
     const publicConfigStore = new ObservableStore()
 
@@ -325,8 +324,11 @@ module.exports = class MetamaskController extends EventEmitter {
     }
 
     function selectPublicState (memState) {
+      const isEnabled = checkIsEnabled()
+      const isReady = memState.isUnlocked && isEnabled
       const result = {
-        selectedAddress: memState.isUnlocked ? memState.selectedAddress : undefined,
+        isEnabled,
+        selectedAddress: isReady ? memState.selectedAddress : undefined,
         networkVersion: memState.network,
       }
       return result
@@ -1287,7 +1289,7 @@ module.exports = class MetamaskController extends EventEmitter {
     const mux = setupMultiplex(connectionStream)
     // connect features
     this.setupProviderConnection(mux.createStream('provider'), originDomain)
-    this.setupPublicConfig(mux.createStream('publicConfig'))
+    this.setupPublicConfig(mux.createStream('publicConfig'), originDomain)
   }
 
   /**
@@ -1408,8 +1410,11 @@ module.exports = class MetamaskController extends EventEmitter {
    *
    * @param {*} outStream - The stream to provide public config over.
    */
-  setupPublicConfig (outStream) {
-    const configStore = this.createPublicConfigStore()
+  setupPublicConfig (outStream, originDomain) {
+    const configStore = this.createPublicConfigStore({
+      // check the providerApprovalController's approvedOrigins
+      checkIsEnabled: () => this.providerApprovalController.approvedOrigins[originDomain],
+    })
     const configStream = asStream(configStore)
 
     pump(
