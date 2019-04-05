@@ -8,9 +8,6 @@ const MetamaskInpageProvider = require('metamask-inpage-provider')
 const createStandardProvider = require('./createStandardProvider').default
 
 let warned = false
-let providerHandle
-let isApprovedHandle
-let isUnlockedHandle
 
 restoreContextAfterImports()
 
