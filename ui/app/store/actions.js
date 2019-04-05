@@ -343,9 +343,7 @@ var actions = {
   createCancelTransaction,
   createSpeedUpTransaction,
 
-  approveProviderRequest,
   approveProviderRequestByOrigin,
-  rejectProviderRequest,
   rejectProviderRequestByOrigin,
   clearApprovedOrigins,
 
@@ -2679,18 +2677,6 @@ function setPendingTokens (pendingTokens) {
   return {
     type: actions.SET_PENDING_TOKENS,
     payload: tokens,
-  }
-}
-
-function approveProviderRequest (tabID) {
-  return (dispatch) => {
-    background.approveProviderRequest(tabID)
-  }
-}
-
-function rejectProviderRequest (tabID) {
-  return (dispatch) => {
-    background.rejectProviderRequest(tabID)
   }
 }
 

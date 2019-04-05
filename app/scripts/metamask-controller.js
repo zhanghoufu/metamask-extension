@@ -471,9 +471,7 @@ module.exports = class MetamaskController extends EventEmitter {
       cancelTypedMessage: this.cancelTypedMessage.bind(this),
 
       // provider approval
-      approveProviderRequest: providerApprovalController.approveProviderRequest.bind(providerApprovalController),
       approveProviderRequestByOrigin: providerApprovalController.approveProviderRequestByOrigin.bind(providerApprovalController),
-      rejectProviderRequest: providerApprovalController.rejectProviderRequest.bind(providerApprovalController),
       rejectProviderRequestByOrigin: providerApprovalController.rejectProviderRequestByOrigin.bind(providerApprovalController),
       clearApprovedOrigins: providerApprovalController.clearApprovedOrigins.bind(providerApprovalController),
     }
@@ -1738,7 +1736,6 @@ module.exports = class MetamaskController extends EventEmitter {
    * Locks MetaMask
    */
   setLocked () {
-    this.providerApprovalController.setLocked()
     return this.keyringController.setLocked()
   }
 }

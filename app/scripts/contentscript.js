@@ -23,8 +23,6 @@ const inpageBundle = inpageContent + inpageSuffix
 if (shouldInjectWeb3()) {
   injectScript(inpageBundle)
   setupStreams()
-  listenForProviderRequest()
-  checkPrivacyMode()
 }
 
 /**
@@ -99,76 +97,6 @@ function setupStreams () {
   // ignore unused channels (handled by background, inpage)
   mux.ignoreStream('provider')
   mux.ignoreStream('publicConfig')
-}
-
-/**
- * Establishes listeners for requests to fully-enable the provider from the dapp context
- * and for full-provider approvals and rejections from the background script context. Dapps
- * should not post messages directly and should instead call provider.enable(), which
- * handles posting these messages internally.
- */
-function listenForProviderRequest () {
-  window.addEventListener('message', ({ source, data }) => {
-    if (source !== window || !data || !data.type) { return }
-    switch (data.type) {
-      case 'ETHEREUM_ENABLE_PROVIDER':
-        extension.runtime.sendMessage({
-          action: 'init-provider-request',
-          force: data.force,
-          origin: source.location.hostname,
-          siteImage: getSiteIcon(source),
-          siteTitle: getSiteName(source),
-        })
-        break
-      case 'ETHEREUM_IS_APPROVED':
-        extension.runtime.sendMessage({
-          action: 'init-is-approved',
-          origin: source.location.hostname,
-        })
-        break
-      case 'METAMASK_IS_UNLOCKED':
-        extension.runtime.sendMessage({
-          action: 'init-is-unlocked',
-        })
-        break
-    }
-  })
-
-  extension.runtime.onMessage.addListener(({ action = '', isApproved, caching, isUnlocked, selectedAddress }) => {
-    switch (action) {
-      case 'approve-provider-request':
-        window.postMessage({ type: 'ethereumprovider', selectedAddress }, '*')
-        break
-      case 'approve-legacy-provider-request':
-        window.postMessage({ type: 'ethereumproviderlegacy', selectedAddress }, '*')
-        break
-      case 'reject-provider-request':
-        window.postMessage({ type: 'ethereumprovider', error: 'User denied account authorization' }, '*')
-        break
-      case 'answer-is-approved':
-        window.postMessage({ type: 'ethereumisapproved', isApproved, caching }, '*')
-        break
-      case 'answer-is-unlocked':
-        window.postMessage({ type: 'metamaskisunlocked', isUnlocked }, '*')
-        break
-      case 'metamask-set-locked':
-        window.postMessage({ type: 'metamasksetlocked' }, '*')
-        break
-      case 'ethereum-ping-success':
-        window.postMessage({ type: 'ethereumpingsuccess' }, '*')
-        break
-      case 'ethereum-ping-error':
-        window.postMessage({ type: 'ethereumpingerror' }, '*')
-    }
-  })
-}
-
-/**
- * Checks if MetaMask is currently operating in "privacy mode", meaning
- * dapps must call ethereum.enable in order to access user accounts
- */
-function checkPrivacyMode () {
-  extension.runtime.sendMessage({ action: 'init-privacy-request' })
 }
 
 /**
