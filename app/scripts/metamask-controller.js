@@ -310,18 +310,18 @@ module.exports = class MetamaskController extends EventEmitter {
    * This store is used to make some config info available to Dapps synchronously.
    */
   createPublicConfigStore () {
-    // get init state
+    // subset of state for metamask inpage provider
     const publicConfigStore = new ObservableStore()
 
-    // memStore -> transform -> publicConfigStore
-    const updatePublicConfigStore = (memState) => {
-      const publicState = selectPublicState(memState)
-      publicConfigStore.putState(publicState)
-    }
-
+    // setup memStore subscription hooks
     this.on('update', updatePublicConfigStore)
     publicConfigStore.destroy = () => {
       this.off('update', updatePublicConfigStore)
+    }
+
+    function updatePublicConfigStore (memState) {
+      const publicState = selectPublicState(memState)
+      publicConfigStore.putState(publicState)
     }
 
     function selectPublicState (memState) {
