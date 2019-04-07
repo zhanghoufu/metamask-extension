@@ -16,7 +16,7 @@ class ProviderApprovalController extends SafeEventEmitter {
    *
    * @param {Object} [config] - Options to configure controller
    */
-  constructor ({ closePopup, keyringController, openPopup, platform, preferencesController } = {}) {
+  constructor ({ closePopup, keyringController, openPopup, platform, preferencesController, getMetadata } = {}) {
     super()
     this.approvedOrigins = {}
     this.closePopup = closePopup
@@ -24,18 +24,24 @@ class ProviderApprovalController extends SafeEventEmitter {
     this.openPopup = openPopup
     this.platform = platform
     this.preferencesController = preferencesController
+    this.getMetadata = getMetadata
     this.store = new ObservableStore({
       providerRequests: [],
     })
   }
 
+  /**
+   * Called when a user approves access to a full Ethereum provider API
+   *
+   * @param {object} opts - opts for the middleware contains the origin for the middleware
+   */
   createMiddleware ({ origin }) {
     return createAsyncMiddleware(async (req, res, next) => {
       // only handle requestAccounts
       if (req.method !== 'eth_requestAccounts') return next()
       // register the provider request
-      // TODO: siteTitle, siteImage, tabId?
-      this._handleProviderRequest(origin, origin, null, false, null)
+      const metadata = this.getMetadata(origin)
+      this._handleProviderRequest(origin, metadata.name, metadata.icon, false, null)
       // wait for resolution of request
       const approved = await new Promise(resolve => this.once(`resolvedRequest:${origin}`, ({ approved }) => resolve(approved)))
       if (approved) {

@@ -234,6 +234,7 @@ module.exports = class MetamaskController extends EventEmitter {
       openPopup: opts.openPopup,
       platform: opts.platform,
       preferencesController: this.preferencesController,
+      getMetadata: (origin) => this.siteMetadataController.getMetadata(origin),
     })
 
     this.store.updateStructure({
