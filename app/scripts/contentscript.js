@@ -1,6 +1,8 @@
 const fs = require('fs')
 const path = require('path')
 const pump = require('pump')
+const log = require('loglevel')
+const Dnode = require('dnode')
 const querystring = require('querystring')
 const LocalMessageDuplexStream = require('post-message-stream')
 const PongStream = require('ping-pong-stream/pong')
@@ -21,7 +23,7 @@ const inpageBundle = inpageContent + inpageSuffix
 
 if (shouldInjectWeb3()) {
   injectScript(inpageBundle)
-  setupStreams()
+  start()
 }
 
 /**
@@ -43,10 +45,20 @@ function injectScript (content) {
 }
 
 /**
+ * Sets up the stream communication and submits site metadata
+ *
+ */
+async function start () {
+  const { background } = await setupStreams()
+  await domIsReady()
+  submitSiteMetadata(background)
+}
+
+/**
  * Sets up two-way communication streams between the
  * browser extension and local per-page browser context
  */
-function setupStreams () {
+async function setupStreams () {
   // setup communication to page and plugin
   const pageStream = new LocalMessageDuplexStream({
     name: 'contentscript',
@@ -96,6 +108,42 @@ function setupStreams () {
   // ignore unused channels (handled by background, inpage)
   mux.ignoreStream('provider')
   mux.ignoreStream('publicConfig')
+
+  // connect public api
+  const publicApiStream = mux.createStream('publicApi')
+  const background = await setupPublicApi(publicApiStream)
+
+  return { background }
+}
+
+async function setupPublicApi (outStream) {
+  const dnode = Dnode()
+  pump(
+    outStream,
+    dnode,
+    outStream,
+    (err) => {
+      // report any error
+      if (err) log.error(err)
+    }
+  )
+  const background = await new Promise(resolve => dnode.once('remote', resolve))
+  return background
+}
+
+/**
+ * Gets site metadata and submits it to background
+ *
+ * @param {*} background The api object for communicating with the background
+ */
+function submitSiteMetadata (background) {
+  // get metadata
+  const metadata = {
+    name: getSiteName(window),
+    icon: getSiteIcon(window),
+  }
+  // submit metadata
+  background.siteMetadata.set(metadata)
 }
 
 /**
@@ -211,6 +259,10 @@ function redirectToPhishingWarning () {
   })}`
 }
 
+
+/**
+ * Extracts a name for the site from the DOM
+ */
 function getSiteName (window) {
   const document = window.document
   const siteName = document.querySelector('head > meta[property="og:site_name"]')
@@ -226,6 +278,9 @@ function getSiteName (window) {
   return document.title
 }
 
+/**
+ * Extracts an icon for the site from the DOM
+ */
 function getSiteIcon (window) {
   const document = window.document
 
@@ -242,4 +297,14 @@ function getSiteIcon (window) {
   }
 
   return null
+}
+
+/**
+ * Returns a promise that resolves when the DOM is loaded (does not wait for images to load)
+ */
+async function domIsReady () {
+  // already loaded
+  if (['interactive', 'complete'].includes(document.readyState)) return
+  // wait for load
+  await new Promise(resolve => window.addEventListener('DOMContentLoaded', resolve, { once: true }))
 }

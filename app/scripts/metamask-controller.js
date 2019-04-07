@@ -37,6 +37,7 @@ const BalancesController = require('./controllers/computed-balances')
 const TokenRatesController = require('./controllers/token-rates')
 const DetectTokensController = require('./controllers/detect-tokens')
 const ProviderApprovalController = require('./controllers/provider-approval')
+const SiteMetadataController = require('./controllers/site-metadata')
 const nodeify = require('./lib/nodeify')
 const accountImporter = require('./account-import-strategies')
 const getBuyEthUrl = require('./lib/buy-eth-url')
@@ -95,6 +96,9 @@ module.exports = class MetamaskController extends EventEmitter {
       openPopup: opts.openPopup,
       network: this.networkController,
     })
+
+    // site metadata
+    this.siteMetadataController = new SiteMetadataController()
 
     // currency controller
     this.currencyController = new CurrencyController({
@@ -1292,6 +1296,7 @@ module.exports = class MetamaskController extends EventEmitter {
     // connect features
     this.setupProviderConnection(mux.createStream('provider'), originDomain)
     this.setupPublicConfig(mux.createStream('publicConfig'), originDomain)
+    this.setupPublicApi(mux.createStream('publicApi'), originDomain)
   }
 
   /**
@@ -1428,6 +1433,33 @@ module.exports = class MetamaskController extends EventEmitter {
         configStore.destroy()
         configStream.destroy()
         if (err) log.error(err)
+      }
+    )
+  }
+
+  /**
+   * A method for providing our public api over a stream.
+   * This includes a method for setting site metadata like title and image
+   *
+   * @param {*} outStream - The stream to provide the api over.
+   */
+  setupPublicApi (outStream, originDomain) {
+    const api = {
+      siteMetadata: {
+        set: nodeify((metadata) => this.siteMetadataController.setMetadata(originDomain, metadata)),
+      },
+    }
+    const dnode = Dnode(api)
+    // connect dnode api to remote connection
+    pump(
+      outStream,
+      dnode,
+      outStream,
+      (err) => {
+        // report any error
+        if (err) log.error(err)
+        // clear metadata on disconnect
+        this.siteMetadataController.clearMetadata(originDomain)
       }
     )
   }
