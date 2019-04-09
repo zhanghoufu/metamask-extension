@@ -1464,7 +1464,7 @@ module.exports = class MetamaskController extends EventEmitter {
       getSiteMetadata: async () => {
         const remote = await getRemote()
         return await pify(remote.getSiteMetadata)()
-      }
+      },
     }
 
     return publicApi

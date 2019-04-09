@@ -55,7 +55,7 @@ async function start () {
 /**
  * Sets up two-way communication streams between the
  * browser extension and local per-page browser context.
- * 
+ *
  */
 async function setupStreams () {
   // the transport-specific streams for communication between inpage and background
@@ -67,7 +67,7 @@ async function setupStreams () {
   const extensionStream = new PortStream(extensionPort)
 
   // create and connect channel muxers
-  // so we can handle the channels individually 
+  // so we can handle the channels individually
   const pageMux = new ObjectMultiplex()
   pageMux.setMaxListeners(25)
   const extensionMux = new ObjectMultiplex()
