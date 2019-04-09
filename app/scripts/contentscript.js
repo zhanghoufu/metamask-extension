@@ -55,10 +55,11 @@ async function start () {
 
 /**
  * Sets up two-way communication streams between the
- * browser extension and local per-page browser context
+ * browser extension and local per-page browser context.
+ * 
  */
 async function setupStreams () {
-  // setup communication to page and extension
+  // the transport-specific streams for communication between inpage and background
   const pageStream = new LocalMessageDuplexStream({
     name: 'contentscript',
     target: 'inpage',
@@ -66,44 +67,50 @@ async function setupStreams () {
   const extensionPort = extension.runtime.connect({ name: 'contentscript' })
   const extensionStream = new PortStream(extensionPort)
 
-  // forward communication extension->inpage
+  // create and connect channel muxers
+  // so we can handle the channels individually 
+  const pageMux = new ObjectMultiplex()
+  pageMux.setMaxListeners(25)
+  const extensionMux = new ObjectMultiplex()
+  extensionMux.setMaxListeners(25)
+
   pump(
+    pageMux,
     pageStream,
+    pageMux,
+    (err) => logStreamDisconnectWarning('MetaMask Inpage Multiplex', err)
+  )
+  pump(
+    extensionMux,
     extensionStream,
-    pageStream,
-    (err) => logStreamDisconnectWarning('MetaMask Contentscript Forwarding', err)
+    extensionMux,
+    (err) => logStreamDisconnectWarning('MetaMask Background Multiplex', err)
   )
 
-  // setup local multistream channels
-  const mux = new ObjectMultiplex()
-  mux.setMaxListeners(25)
+  // forward communication across inpage-background for these channels only
+  forwardTrafficBetweenMuxers('provider', pageMux, extensionMux)
+  forwardTrafficBetweenMuxers('publicConfig', pageMux, extensionMux)
 
-  pump(
-    mux,
-    pageStream,
-    mux,
-    (err) => logStreamDisconnectWarning('MetaMask Inpage', err)
-  )
-  pump(
-    mux,
-    extensionStream,
-    mux,
-    (err) => logStreamDisconnectWarning('MetaMask Background', err)
-  )
-
-  // connect phishing warning stream
-  const phishingStream = mux.createStream('phishing')
+  // connect "phishing" channel to warning system
+  const phishingStream = extensionMux.createStream('phishing')
   phishingStream.once('data', redirectToPhishingWarning)
 
-  // ignore unused channels (handled by background, inpage)
-  mux.ignoreStream('provider')
-  mux.ignoreStream('publicConfig')
-
-  // connect public api
-  const publicApiStream = mux.createStream('publicApi')
+  // connect "publicApi" channel to submit page metadata
+  const publicApiStream = extensionMux.createStream('publicApi')
   const background = await setupPublicApi(publicApiStream)
 
   return { background }
+}
+
+function forwardTrafficBetweenMuxers (channelName, muxA, muxB) {
+  const channelA = muxA.createStream(channelName)
+  const channelB = muxB.createStream(channelName)
+  pump(
+    channelA,
+    channelB,
+    channelA,
+    (err) => logStreamDisconnectWarning(`MetaMask muxed traffic for channel "${channelName}" failed.`, err)
+  )
 }
 
 async function setupPublicApi (outStream) {
