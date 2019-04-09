@@ -38,6 +38,11 @@ class ProviderApprovalController extends SafeEventEmitter {
     return createAsyncMiddleware(async (req, res, next) => {
       // only handle requestAccounts
       if (req.method !== 'eth_requestAccounts') return next()
+      // if already approved or privacy mode disabled, return early
+      if (this.shouldExposeAccounts(origin)) {
+        res.result = [this.preferencesController.getSelectedAddress()]
+        return
+      }
       // register the provider request
       const metadata = await getSiteMetadata(origin)
       console.log('metadata', metadata)
