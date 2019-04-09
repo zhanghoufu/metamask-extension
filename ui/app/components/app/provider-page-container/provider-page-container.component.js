@@ -10,7 +10,6 @@ export default class ProviderPageContainer extends PureComponent {
     origin: PropTypes.string.isRequired,
     siteImage: PropTypes.string,
     siteTitle: PropTypes.string.isRequired,
-    tabID: PropTypes.string.isRequired,
   };
 
   static contextTypes = {
