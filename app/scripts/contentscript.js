@@ -58,18 +58,18 @@ async function start () {
  * browser extension and local per-page browser context
  */
 async function setupStreams () {
-  // setup communication to page and plugin
+  // setup communication to page and extension
   const pageStream = new LocalMessageDuplexStream({
     name: 'contentscript',
     target: 'inpage',
   })
-  const pluginPort = extension.runtime.connect({ name: 'contentscript' })
-  const pluginStream = new PortStream(pluginPort)
+  const extensionPort = extension.runtime.connect({ name: 'contentscript' })
+  const extensionStream = new PortStream(extensionPort)
 
-  // forward communication plugin->inpage
+  // forward communication extension->inpage
   pump(
     pageStream,
-    pluginStream,
+    extensionStream,
     pageStream,
     (err) => logStreamDisconnectWarning('MetaMask Contentscript Forwarding', err)
   )
@@ -86,7 +86,7 @@ async function setupStreams () {
   )
   pump(
     mux,
-    pluginStream,
+    extensionStream,
     mux,
     (err) => logStreamDisconnectWarning('MetaMask Background', err)
   )
@@ -137,7 +137,7 @@ function submitSiteMetadata (background) {
 }
 
 /**
- * Error handler for page to plugin stream disconnections
+ * Error handler for page to extension stream disconnections
  *
  * @param {string} remoteLabel Remote stream name
  * @param {Error} err Stream connection error
