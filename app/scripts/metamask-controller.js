@@ -1423,7 +1423,7 @@ module.exports = class MetamaskController extends EventEmitter {
   setupPublicConfig (outStream, originDomain) {
     const configStore = this.createPublicConfigStore({
       // check the providerApprovalController's approvedOrigins
-      checkIsEnabled: () => this.providerApprovalController.approvedOrigins[originDomain],
+      checkIsEnabled: () => this.providerApprovalController.shouldExposeAccounts(originDomain),
     })
     const configStream = asStream(configStore)
 
