@@ -7,8 +7,10 @@
 const EventEmitter = require('events')
 const pump = require('pump')
 const Dnode = require('dnode')
+const pify = require('pify')
 const ObservableStore = require('obs-store')
 const ComposableObservableStore = require('./lib/ComposableObservableStore')
+const createDnodeRemoteGetter = require('./lib/createDnodeRemoteGetter')
 const asStream = require('obs-store/lib/asStream')
 const AccountTracker = require('./lib/account-tracker')
 const RpcEngine = require('json-rpc-engine')
@@ -234,7 +236,6 @@ module.exports = class MetamaskController extends EventEmitter {
       openPopup: opts.openPopup,
       platform: opts.platform,
       preferencesController: this.preferencesController,
-      getMetadata: (origin) => this.siteMetadataController.getMetadata(origin),
     })
 
     this.store.updateStructure({
@@ -1295,9 +1296,9 @@ module.exports = class MetamaskController extends EventEmitter {
     // setup multiplexing
     const mux = setupMultiplex(connectionStream)
     // connect features
-    this.setupProviderConnection(mux.createStream('provider'), originDomain)
+    const publicApi = this.setupPublicApi(mux.createStream('publicApi'), originDomain)
+    this.setupProviderConnection(mux.createStream('provider'), originDomain, publicApi)
     this.setupPublicConfig(mux.createStream('publicConfig'), originDomain)
-    this.setupPublicApi(mux.createStream('publicApi'), originDomain)
   }
 
   /**
@@ -1370,7 +1371,7 @@ module.exports = class MetamaskController extends EventEmitter {
    * @param {*} outStream - The stream to provide over.
    * @param {string} origin - The URI of the requesting resource.
    */
-  setupProviderConnection (outStream, origin) {
+  setupProviderConnection (outStream, origin, publicApi) {
     // setup json rpc engine stack
     const engine = new RpcEngine()
     const provider = this.provider
@@ -1391,7 +1392,10 @@ module.exports = class MetamaskController extends EventEmitter {
     // watch asset
     engine.push(this.preferencesController.requestWatchAsset.bind(this.preferencesController))
     // requestAccounts
-    engine.push(this.providerApprovalController.createMiddleware({ origin }))
+    engine.push(this.providerApprovalController.createMiddleware({
+      origin,
+      getSiteMetadata: publicApi && publicApi.getSiteMetadata,
+    }))
     // forward to metamask primary provider
     engine.push(providerAsMiddleware(provider))
 
@@ -1445,12 +1449,7 @@ module.exports = class MetamaskController extends EventEmitter {
    * @param {*} outStream - The stream to provide the api over.
    */
   setupPublicApi (outStream, originDomain) {
-    const api = {
-      siteMetadata: {
-        set: nodeify((metadata) => this.siteMetadataController.setMetadata(originDomain, metadata)),
-      },
-    }
-    const dnode = Dnode(api)
+    const dnode = Dnode()
     // connect dnode api to remote connection
     pump(
       outStream,
@@ -1459,10 +1458,20 @@ module.exports = class MetamaskController extends EventEmitter {
       (err) => {
         // report any error
         if (err) log.error(err)
-        // clear metadata on disconnect
-        this.siteMetadataController.clearMetadata(originDomain)
       }
     )
+
+    const getRemote = createDnodeRemoteGetter(dnode)
+
+    const publicApi = {
+      // wrap with an await remote
+      getSiteMetadata: async () => {
+        const remote = await getRemote()
+        return await pify(remote.getSiteMetadata)()
+      }
+    }
+
+    return publicApi
   }
 
   /**

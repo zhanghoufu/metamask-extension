@@ -48,9 +48,8 @@ function injectScript (content) {
  *
  */
 async function start () {
-  const { background } = await setupStreams()
+  await setupStreams()
   await domIsReady()
-  submitSiteMetadata(background)
 }
 
 /**
@@ -114,7 +113,10 @@ function forwardTrafficBetweenMuxers (channelName, muxA, muxB) {
 }
 
 async function setupPublicApi (outStream) {
-  const dnode = Dnode()
+  const api = {
+    getSiteMetadata: (cb) => cb(null, getSiteMetadata()),
+  }
+  const dnode = Dnode(api)
   pump(
     outStream,
     dnode,
@@ -129,18 +131,16 @@ async function setupPublicApi (outStream) {
 }
 
 /**
- * Gets site metadata and submits it to background
+ * Gets site metadata and returns it
  *
- * @param {*} background The api object for communicating with the background
  */
-function submitSiteMetadata (background) {
+function getSiteMetadata () {
   // get metadata
   const metadata = {
     name: getSiteName(window),
     icon: getSiteIcon(window),
   }
-  // submit metadata
-  background.siteMetadata.set(metadata)
+  return metadata
 }
 
 /**

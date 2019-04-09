@@ -16,7 +16,7 @@ class ProviderApprovalController extends SafeEventEmitter {
    *
    * @param {Object} [config] - Options to configure controller
    */
-  constructor ({ closePopup, keyringController, openPopup, platform, preferencesController, getMetadata } = {}) {
+  constructor ({ closePopup, keyringController, openPopup, platform, preferencesController } = {}) {
     super()
     this.approvedOrigins = {}
     this.closePopup = closePopup
@@ -24,7 +24,6 @@ class ProviderApprovalController extends SafeEventEmitter {
     this.openPopup = openPopup
     this.platform = platform
     this.preferencesController = preferencesController
-    this.getMetadata = getMetadata
     this.store = new ObservableStore({
       providerRequests: [],
     })
@@ -35,12 +34,13 @@ class ProviderApprovalController extends SafeEventEmitter {
    *
    * @param {object} opts - opts for the middleware contains the origin for the middleware
    */
-  createMiddleware ({ origin }) {
+  createMiddleware ({ origin, getSiteMetadata }) {
     return createAsyncMiddleware(async (req, res, next) => {
       // only handle requestAccounts
       if (req.method !== 'eth_requestAccounts') return next()
       // register the provider request
-      const metadata = this.getMetadata(origin)
+      const metadata = await getSiteMetadata(origin)
+      console.log('metadata', metadata)
       this._handleProviderRequest(origin, metadata.name, metadata.icon, false, null)
       // wait for resolution of request
       const approved = await new Promise(resolve => this.once(`resolvedRequest:${origin}`, ({ approved }) => resolve(approved)))
