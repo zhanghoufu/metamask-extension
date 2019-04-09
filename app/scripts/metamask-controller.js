@@ -39,7 +39,6 @@ const BalancesController = require('./controllers/computed-balances')
 const TokenRatesController = require('./controllers/token-rates')
 const DetectTokensController = require('./controllers/detect-tokens')
 const ProviderApprovalController = require('./controllers/provider-approval')
-const SiteMetadataController = require('./controllers/site-metadata')
 const nodeify = require('./lib/nodeify')
 const accountImporter = require('./account-import-strategies')
 const getBuyEthUrl = require('./lib/buy-eth-url')
@@ -98,9 +97,6 @@ module.exports = class MetamaskController extends EventEmitter {
       openPopup: opts.openPopup,
       network: this.networkController,
     })
-
-    // site metadata
-    this.siteMetadataController = new SiteMetadataController()
 
     // currency controller
     this.currencyController = new CurrencyController({
