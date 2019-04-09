@@ -5,7 +5,6 @@ const log = require('loglevel')
 const Dnode = require('dnode')
 const querystring = require('querystring')
 const LocalMessageDuplexStream = require('post-message-stream')
-const PongStream = require('ping-pong-stream/pong')
 const ObjectMultiplex = require('obj-multiplex')
 const extension = require('extensionizer')
 const PortStream = require('extension-port-stream')
@@ -90,15 +89,6 @@ async function setupStreams () {
     pluginStream,
     mux,
     (err) => logStreamDisconnectWarning('MetaMask Background', err)
-  )
-
-  // connect ping stream
-  const pongStream = new PongStream({ objectMode: true })
-  pump(
-    mux,
-    pongStream,
-    mux,
-    (err) => logStreamDisconnectWarning('MetaMask PingPongStream', err)
   )
 
   // connect phishing warning stream
