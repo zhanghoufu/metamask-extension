@@ -7,7 +7,7 @@ import actions from '../../store/actions'
 import log from 'loglevel'
 import { getMetaMaskAccounts, getNetworkIdentifier } from '../../selectors/selectors'
 import { matches } from '../../helpers/utils/util'
-import openWyre from '../../../lib/wyre'
+import openWyre from '../../../vendor/wyre'
 
 // init
 import FirstTimeFlow from '../first-time-flow'
