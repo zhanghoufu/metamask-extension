@@ -88,7 +88,7 @@ module.exports = class MetamaskController extends EventEmitter {
     this.createVaultMutex = new Mutex()
 
     // network store
-    this.networkController = new NetworkController(initState.NetworkController, this.platform)
+    this.networkController = new NetworkController(initState.NetworkController)
 
     // preferences controller
     this.preferencesController = new PreferencesController({
@@ -230,7 +230,6 @@ module.exports = class MetamaskController extends EventEmitter {
       closePopup: opts.closePopup,
       keyringController: this.keyringController,
       openPopup: opts.openPopup,
-      platform: opts.platform,
       preferencesController: this.preferencesController,
     })
 
