@@ -44,7 +44,6 @@ class ProviderApprovalController extends SafeEventEmitter {
       }
       // register the provider request
       const metadata = await getSiteMetadata(origin)
-      console.log('metadata', metadata)
       this._handleProviderRequest(origin, metadata.name, metadata.icon, false, null)
       // wait for resolution of request
       const approved = await new Promise(resolve => this.once(`resolvedRequest:${origin}`, ({ approved }) => resolve(approved)))
