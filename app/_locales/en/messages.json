@@ -308,6 +308,9 @@
   "connectingToRinkeby": {
     "message": "Connecting to Rinkeby Test Network"
   },
+  "connectingToGoerli": {
+    "message": "Connecting to Goerli Test Network"
+  },
   "connectingToUnknown": {
     "message": "Connecting to Unknown Network"
   },
@@ -1225,6 +1228,9 @@
   },
   "ropsten": {
     "message": "Ropsten Test Network"
+  },
+  "goerli": {
+    "message": "Goerli Test Network"
   },
   "rpc": {
     "message": "Custom RPC"
