@@ -334,6 +334,7 @@ module.exports = class MetamaskController extends EventEmitter {
       const result = {
         selectedAddress: memState.isUnlocked ? memState.selectedAddress : undefined,
         networkVersion: memState.network,
+        onboardingcomplete: memState.completedOnboarding,
       }
       return result
     }
